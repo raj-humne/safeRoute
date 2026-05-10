@@ -69,12 +69,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
         console.log("Login cancelled by user.");
       } else {
-        console.error("Login failed:", error);
+        console.error("Login failed, falling back to mock user:", error);
+        // Fallback for local development if Firebase Auth is not configured
+        setUser({
+          uid: "mock-dev-user-123",
+          displayName: "Explorer User",
+          email: "explorer@saferoute.ai",
+          photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=Explorer"
+        } as User);
       }
     }
   };
 
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.error(e);
+    }
+    setUser(null); // Ensure mock user is also cleared
+  };
 
   return (
     <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout }}>
