@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && 
+        incoming().keys().hasAll(['userId', 'username', 'email', 'createdAt']) &&
+        incoming().userId == userId &&
+        (incoming().get('isAdmin', false) == false); 
+      allow update: if isOwner(userId) && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['username']);
+    }
+
+    // Reports collection
+    match /reports/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        isValidId(reportId) &&
+        incoming().userId == request.auth.uid &&
+        incoming().reportId == reportId &&
+        incoming().severity >= 1 && incoming().severity <= 5 &&
+        incoming().type in ['danger', 'safety'];
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // SOS Events
+    match /sos_events/{sosId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        existing().userId == request.auth.uid ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+  }
+}

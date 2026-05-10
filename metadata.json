@@ -1,0 +1,6 @@
+{
+  "name": "SafeRoute",
+  "description": "AI-powered smart safety navigation platform for finding the safest walking routes using crowd-sourced data and real-time safety scores.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["mapping", "real-time-reporting", "ai-scoring"]
+}
